@@ -46,6 +46,13 @@ setRowAsFactor <- function(dataset, columns){
   return(dataset)
 }
 
+# Creae a logistic regression model
+createLogisticRegressionModel <- function(formula, family=binomial, dataset){
+  logisticRegressionModel = glm(formula, family = family, data = dataset)
+  
+  return(logisticRegressionModel)
+}
+
 ```
 
 
@@ -133,4 +140,31 @@ cat("From looking at the decision tree it is clear that the top three variables 
     top level variables, and then a second using all variables. The results from each model will then be compared before the best model is presented to management.")
 ```
 
+
+```{r Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Logistic Regression
+We will now create multiple logistic regressions using GLM package. We will compare and then optimize before providing a final model to management for business use.")
+```
+
+```{r All Variable Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
+cat("##All Variables Logistic Regression
+In this section we will create a logistic regression using all variables in the training dataset and look at statistical significance of each. Later in the report we will
+assess the accuracy of this model against others.")
+```
+```{r Logistic Regression, include=dataScienceReport}
+# We will start by first making a regression using all variables
+allVariablesLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn~., dataset = train_df)
+
+# Print a summary of the regression
+print("Model Summary")
+summary(allVariablesLogisticRegressionModel)
+# Convert Betas into odds ratio
+print("Odds Ratios")
+exp(coef(allVariablesLogisticRegressionModel))
+```
+```{r All Variable Logistic Regression Discussion, results='asis', echo=F, include=dataScienceReport}
+cat("From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. The surprising variable here
+    is TotalCharges which also has a high statistical significance but was not featured on the decision tree. To evaluate what information can be gained from TotalCharges
+    a third model will be created in which it will feature.")
+```
 
