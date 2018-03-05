@@ -1,0 +1,13 @@
+---
+title: "Assignment 2 - Logistic Regression"
+author: "Eoin Flynn"
+date: "5 March 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+dataScienceReport = T
+knitr::opts_chunk$set(echo = dataScienceReport)
+```
+
+
