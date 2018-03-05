@@ -25,9 +25,37 @@ dataScienceReport = T
 knitr::opts_chunk$set(echo = dataScienceReport, tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
-#Data
-```{r Load Data}
-library(RMySQL)
+```{r Functions Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Functions
+    This section will hold all of the functions that will be used throughout this markdown.")
+```
+```{r Functions Code}
+# Create a decision tree
+createDecisionTreeModel <- function(formula, dataset, maxdepth){
+  suppressMessages(library(party))
+  decisionTreeModel <- ctree(formula, data=dataset, controls = ctree_control(maxdepth = maxdepth))
+  
+  return(decisionTreeModel)
+}
+
+# Change rows to factors
+setRowAsFactor <- function(dataset, columns){
+  for (column in columns){
+    dataset[,column] <- as.factor(dataset[,column])
+  }
+  return(dataset)
+}
+
+```
+
+
+
+```{r Load Data Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Data
+In this section we will load in our data and do some basic data exploration.")
+```
+```{r Load Data Code}
+suppressMessages(library(RMySQL))
 
 USER <- 'root'
 PASSWORD <- 'A13337995'
@@ -40,12 +68,7 @@ customerDataset <- dbGetQuery(db, statement = statement)
 dbDisconnect(db)
 
 # Loops through and changes all relevant rows to factors and returns the dataset post modification
-setRowAsFactor <- function(dataset, columns){
-  for (column in columns){
-    dataset[,column] <- as.factor(dataset[,column])
-  }
-  return(dataset)
-}
+
 
 customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
                                                      "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
@@ -59,10 +82,10 @@ customerDataset = customerDataset[, -which(names(customerDataset) %in% c("custom
 ```
 
 
-```{r Split,  results='asis', echo=F, include=dataScienceReport}
+```{r Split Text, results='asis', echo=F, include=dataScienceReport}
 cat("##Split Data
 We will now split our data into test and training sets. The purpose of this is to create a sample of data that the model has never seen before in order to gauge its accuracy. 
-The training set will consist of 80% of the data while the remaining 20% will constitute the test set. ")
+The training set will consist of 80% of the data while the remaining 20% will constitute the test set.")
 ```
 ```{r Split Code}
 suppressMessages(library(caTools))
@@ -72,11 +95,42 @@ set.seed(12216)
 
 # Create our two datasets
 sample <- sample.split(customerDataset, SplitRatio = .80)
-
 train_df <- subset(customerDataset, sample == TRUE)
 test_df <- subset(customerDataset, sample == FALSE)
+
+# We can now see that the data is split approximately 80:20
+print(sprintf("The full dataset has %s observations", NROW(customerDataset)))
+print(sprintf("The training dataset has %s observations", NROW(train_df)))
+print(sprintf("The testing dataset has %s observations", NROW(test_df)))
+
+# Check to see how many customers churned in each dataset
+table(train_df$Churn)
+table(test_df$Churn)
+
+# We can see that each dataset holds approximately the same proportion of customers who churned
+print(sprintf("%.2f%% of the training set churned", ((NROW(subset(train_df, Churn=="Yes")))/NROW(train_df)*100)))
+print(sprintf("%.2f%% of the testing set churned", ((NROW(subset(test_df, Churn=="Yes")))/NROW(test_df)*100)))
 ```
 
 
+```{r Decision Tree Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Decision Tree
+We want to first make a decision tree to determine which variables are best able to predict whether a customer will churn. We already know from our previous report
+that the optimal model is however this time the tree will only be run on the training dataset.")
+```
+```{r Decision Tree Code, include=dataScienceReport}
+# Create and plot the decision tree
+decisionTreeModel = createDecisionTreeModel(formula = Churn~., dataset = train_df, maxdepth = 5)
+```
+\blandscape
+```{r Decision Tree Plot, fig.height=18, fig.width=26, fig.align="centre", include=dataScienceReport}
+plot(decisionTreeModel, main = "Decision Tree Model", type = "extended", newpage = TRUE)
+```
+\elandscape
+```{r Decision Tree Discussion, results='asis', echo=F, include=dataScienceReport}
+cat("From looking at the decision tree it is clear that the top three variables are Contract, InternetService, and Tenure. Below those three levels, other variables
+    such as StreamingTV, and TechSupport become relevant. To develop the best performing model with this dataset we will create a regression using only those three
+    top level variables, and then a second using all variables. The results from each model will then be compared before the best model is presented to management.")
+```
 
 
