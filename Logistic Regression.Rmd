@@ -151,7 +151,7 @@ cat("##All Variables Logistic Regression
 In this section we will create a logistic regression using all variables in the training dataset and look at statistical significance of each. Later in the report we will
 assess the accuracy of this model against others.")
 ```
-```{r Logistic Regression, include=dataScienceReport}
+```{r All Variable Logistic Regression, include=dataScienceReport}
 # We will start by first making a regression using all variables
 allVariablesLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn~., dataset = train_df)
 
@@ -168,3 +168,40 @@ cat("From the model's summary we can see that our top three variables identified
     a third model will be created in which it will feature.")
 ```
 
+```{r Top Three Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
+cat("##Top Three Logistic Regression
+We will now create our logistic regression using only the top three variables from our decision tree (Contract, InternetService, and Tenure)")
+```
+```{r Top Three Regression, include=dataScienceReport}
+# We will start by first making a regression using all variables
+topThreeLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn~Contract+InternetService+tenure, dataset = train_df)
+
+# Print a summary of the regression
+print("Model Summary")
+summary(topThreeLogisticRegressionModel)
+# Convert Betas into odds ratio
+print("Odds Ratios")
+exp(coef(topThreeLogisticRegressionModel))
+```
+
+```{r Top Four Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
+cat("##Top Four Logistic Regression
+Using the top three variables from before, we will now add TotalCharges to the model to see whether it being statistically significant will later contribute to its
+accuracy")
+```
+```{r Top Four Regression, include=dataScienceReport}
+# We will start by first making a regression using all variables
+topFourLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn~Contract+InternetService+tenure+TotalCharges, dataset = train_df)
+
+# Print a summary of the regression
+print("Model Summary")
+summary(topFourLogisticRegressionModel)
+# Convert Betas into odds ratio
+print("Odds Ratios")
+exp(coef(topFourLogisticRegressionModel))
+```
+
+```{r Model Comparison Text, results='asis', echo=F, include=dataScienceReport}
+cat("#Model Comparison
+Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset")
+```
