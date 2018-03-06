@@ -69,19 +69,27 @@ createPrediction_df <- function(model, dataset, predictionType = "response", one
   
   return(prediction_df)
 }
-```
 
-```{r}
-  # Create a blank dataframe
-  prediction_df <- data.frame(prediction_df)
-  # Run the prediction
-  prediction_df <- predict(allVariablesLogisticRegressionModel, train_df, type = "response")
-  # Add a row for the classification
-  prediction_df$classification <- rep(zeroClass,nrow(prediction_df))
-  # Convert all probabilites above 0.5 to be the affirmative class
-  prediction_df$classification[prediction_df$probabilities > 0.5] <- oneClass
-```
+# Get model performance for plotting ROC curve
+getModelPerformance <- function(model, dataset, outcomeColumn, type="response", xAxis = "tpr", yAxis = "fpr"){
+  suppressMessages(library(ROCR))
+  # Create a predict variable
+  predict <- predict(model, dataset, type = type)
+  # Create a predicition variable
+  predicition <- prediction(predict, outcomeColumn)
+  # Create the performance variable
+  performance <- performance(predicition, xAxis, yAxis)
+  
+  return(performance)
+}
 
+# Plot ROC curves
+plotROCCurves <- function(model1, model2, main, model1Colour = "#009900", model2Colour = "#FF8000", model1Name, model2Name, legendLocation = "bottomright"){
+  plot(model1, main = main, col = model1Colour)
+  plot(model2, add = T, col = model2Colour)
+  legend(legendLocation, legend=paste(rep(c(model1Name,model2Name))),col=c(model1Colour, model2Colour),cex=0.8,fill=c(model1Colour, model2Colour))
+}
+```
 
 
 ```{r Load Data Text, results='asis', echo=F, include=dataScienceReport}
@@ -213,14 +221,40 @@ exp(coef(topThreeLogisticRegressionModel))
 
 ```{r Model Comparison Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Model Comparison
-Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset")
+Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset. One of the easiest ways to see which model
+is more accurate is to use an ROC curve and measure the area under each curve, the larger the area under the curve the more accurate the model is. We will first test
+each model using the training dataset before testing each one individually with the test dataset to gauge how robust they are.")
 ```
 ```{r Model Comparison Code, include=dataScienceReport}
 suppressMessages(library(caret))
-prediction <- predict(allVariablesLogisticRegressionModel, test_df, type = "response")
-contrasts(train_df$Churn)
-new_df <- createPrediction_df(allVariablesLogisticRegressionModel, train_df, oneClass = "Yes", zeroClass = "No")
-head(new_df)
-confusionMatrix(new_df$classification, train_df$Churn)
+suppressMessages(library(ROCR))
+
+# Get the performance of each model
+allVariableModelPerformance <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = train_df, outcomeColumn = train_df$Churn)
+topThreeModelPerformance <- getModelPerformance(topThreeLogisticRegressionModel, dataset = train_df, outcomeColumn = train_df$Churn)
+
+# Plot the ROC curves
+plotROCCurves(allVariableModelPerformance, topThreeModelPerformance, main = "ROC Curves Comparison", model1Name = "AllVariableModel", model2Name = "TopThreeModel")
+
+
+# Check the allVariableModel for overfitting
+allVariableModelTestPerformance <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
+plotROCCurves(allVariableModelPerformance, allVariableModelTestPerformance, main = "ll Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
+
+
+
+# TODO TIDY
+#pred.ff <- predict(allVariablesLogisticRegressionModel, train_df, type = "response")
+#contrasts(train_df$Churn)
+#new_df <- createPrediction_df(allVariablesLogisticRegressionModel, train_df, oneClass = "Yes", zeroClass = "No")
+#head(new_df)
+#confusionMatrix(new_df$classification, train_df$Churn)
+
+
 ```
+
+
+
+
+
 
