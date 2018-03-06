@@ -65,6 +65,7 @@ createPrediction_df <- function(model, dataset, predictionType = "response", one
   prediction_df$classification <- rep(zeroClass,nrow(prediction_df))
   # Convert all probabilites above 0.5 to be the affirmative class
   prediction_df$classification[prediction_df$probabilities > 0.5] <- oneClass
+  prediction_df$classification <- as.factor(prediction_df$classification)
   
   
   return(prediction_df)
@@ -85,9 +86,18 @@ getModelPerformance <- function(model, dataset, outcomeColumn, type="response", 
 
 # Plot ROC curves
 plotROCCurves <- function(model1, model2, main, model1Colour = "#009900", model2Colour = "#FF8000", model1Name, model2Name, legendLocation = "bottomright"){
-  plot(model1, main = main, col = model1Colour)
+  plot(model1, main = main, col = model1Colour, print.auc=TRUE)
   plot(model2, add = T, col = model2Colour)
   legend(legendLocation, legend=paste(rep(c(model1Name,model2Name))),col=c(model1Colour, model2Colour),cex=0.8,fill=c(model1Colour, model2Colour))
+}
+
+# Calculate AUC. Returns as a decimal
+getAUC <- function(outcomeColumn, dataset, model, oneClass, zeroClass){
+  suppressMessages(library(ModelMetrics))
+  prediction_df <- createPrediction_df(model, dataset, oneClass = oneClass, zeroClass = zeroClass)
+  auc <- auc(outcomeColumn, prediction_df$classification)
+  
+  return(auc)
 }
 ```
 
@@ -236,10 +246,26 @@ topThreeModelPerformance <- getModelPerformance(topThreeLogisticRegressionModel,
 # Plot the ROC curves
 plotROCCurves(allVariableModelPerformance, topThreeModelPerformance, main = "ROC Curves Comparison", model1Name = "AllVariableModel", model2Name = "TopThreeModel")
 
+# Get the AUC
+allVariableModelAUC <- getAUC(train_df$Churn, train_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
+topThreeModelAUC <- getAUC(train_df$Churn, train_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
+# Print the AUC
+print(sprintf("The AUC for the AllVariableModel is %.2f%%, and the AUC for the topThreeModel is %.2f%%", allVariableModelAUC*100, topThreeModelAUC*100))
 
 # Check the allVariableModel for overfitting
-allVariableModelTestPerformance <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
-plotROCCurves(allVariableModelPerformance, allVariableModelTestPerformance, main = "ll Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
+allVariableModelPerformanceTest <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
+plotROCCurves(allVariableModelPerformance, allVariableModelPerformanceTest, main = "All Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
+allVariableModelAUCTest <- getAUC(test_df$Churn, test_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
+print(sprintf("The AUC for the training dataset using the allVariableModel is %.2f%%, and the AUC for the test dataset is %.2f%%", allVariableModelAUC*100, allVariableModelAUCTest*100))
+
+# Check the topThreeModel for overfitting
+topThreeModelPerformanceTest <- getModelPerformance(topThreeLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
+plotROCCurves(topThreeModelPerformance, topThreeModelPerformanceTest, main = "Top Three Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
+topThreeModelAUCTest <- getAUC(test_df$Churn, test_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
+print(sprintf("The AUC for the training dataset using the topThreeModel is %.2f%%, and the AUC for the test dataset is %.2f%%", topThreeModelAUC*100, topThreeModelAUCTest*100))
+
+
+
 
 
 
