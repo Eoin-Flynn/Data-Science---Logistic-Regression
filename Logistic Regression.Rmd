@@ -46,13 +46,40 @@ setRowAsFactor <- function(dataset, columns){
   return(dataset)
 }
 
-# Creae a logistic regression model
+# Create a logistic regression model
 createLogisticRegressionModel <- function(formula, family=binomial, dataset){
   logisticRegressionModel = glm(formula, family = family, data = dataset)
   
   return(logisticRegressionModel)
 }
 
+# Create a prediction dataframe
+createPrediction_df <- function(model, dataset, predictionType = "response", oneClass, zeroClass){
+  # Run the prediction
+  prediction<- predict(model, dataset, type = predictionType)
+  # Convert to a dataframe
+  prediction_df <- data.frame(prediction)
+  # Rename the column to reference easier
+  colnames(prediction_df) <- "probabilities"
+  # Add a row for the classification
+  prediction_df$classification <- rep(zeroClass,nrow(prediction_df))
+  # Convert all probabilites above 0.5 to be the affirmative class
+  prediction_df$classification[prediction_df$probabilities > 0.5] <- oneClass
+  
+  
+  return(prediction_df)
+}
+```
+
+```{r}
+  # Create a blank dataframe
+  prediction_df <- data.frame(prediction_df)
+  # Run the prediction
+  prediction_df <- predict(allVariablesLogisticRegressionModel, train_df, type = "response")
+  # Add a row for the classification
+  prediction_df$classification <- rep(zeroClass,nrow(prediction_df))
+  # Convert all probabilites above 0.5 to be the affirmative class
+  prediction_df$classification[prediction_df$probabilities > 0.5] <- oneClass
 ```
 
 
@@ -163,9 +190,8 @@ print("Odds Ratios")
 exp(coef(allVariablesLogisticRegressionModel))
 ```
 ```{r All Variable Logistic Regression Discussion, results='asis', echo=F, include=dataScienceReport}
-cat("From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. The surprising variable here
-    is TotalCharges which also has a high statistical significance but was not featured on the decision tree. To evaluate what information can be gained from TotalCharges
-    a third model will be created in which it will feature.")
+cat("From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. TotalCharges is also statistically different from zero however since the decision tree deemed that it had no
+    predictive information we will not be including it in our model building")
 ```
 
 ```{r Top Three Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
@@ -184,24 +210,17 @@ print("Odds Ratios")
 exp(coef(topThreeLogisticRegressionModel))
 ```
 
-```{r Top Four Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
-cat("##Top Four Logistic Regression
-Using the top three variables from before, we will now add TotalCharges to the model to see whether it being statistically significant will later contribute to its
-accuracy")
-```
-```{r Top Four Regression, include=dataScienceReport}
-# We will start by first making a regression using all variables
-topFourLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn~Contract+InternetService+tenure+TotalCharges, dataset = train_df)
-
-# Print a summary of the regression
-print("Model Summary")
-summary(topFourLogisticRegressionModel)
-# Convert Betas into odds ratio
-print("Odds Ratios")
-exp(coef(topFourLogisticRegressionModel))
-```
 
 ```{r Model Comparison Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Model Comparison
 Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset")
 ```
+```{r Model Comparison Code, include=dataScienceReport}
+suppressMessages(library(caret))
+prediction <- predict(allVariablesLogisticRegressionModel, test_df, type = "response")
+contrasts(train_df$Churn)
+new_df <- createPrediction_df(allVariablesLogisticRegressionModel, train_df, oneClass = "Yes", zeroClass = "No")
+head(new_df)
+confusionMatrix(new_df$classification, train_df$Churn)
+```
+
