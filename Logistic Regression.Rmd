@@ -99,6 +99,15 @@ getAUC <- function(outcomeColumn, dataset, model, oneClass, zeroClass){
   
   return(auc)
 }
+
+# Create a confusion matrix
+createConfusionMatrix <- function(model, dataset, outcomeColumn, oneClass, zeroClass){
+  suppressMessages(library(caret))
+  prediction_df <- createPrediction_df(model, dataset, oneClass = oneClass, zeroClass = zeroClass)
+  userConfusionMatrix <- table(outcomeColumn, prediction_df$classification)
+  
+  return(userConfusionMatrix)
+}
 ```
 
 
@@ -233,7 +242,8 @@ exp(coef(topThreeLogisticRegressionModel))
 cat("#Model Comparison
 Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset. One of the easiest ways to see which model
 is more accurate is to use an ROC curve and measure the area under each curve, the larger the area under the curve the more accurate the model is. We will first test
-each model using the training dataset before testing each one individually with the test dataset to gauge how robust they are.")
+each model using the training dataset before testing each one individually with the test dataset to gauge how robust they are. Once we have established whether the models
+are robust we will create a pair of confusion matricies using the test dataset to see which model had the highest percentage of churns predicted correctly. ")
 ```
 ```{r Model Comparison Code, include=dataScienceReport}
 suppressMessages(library(caret))
@@ -250,33 +260,28 @@ plotROCCurves(allVariableModelPerformance, topThreeModelPerformance, main = "ROC
 allVariableModelAUC <- getAUC(train_df$Churn, train_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
 topThreeModelAUC <- getAUC(train_df$Churn, train_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
 # Print the AUC
-print(sprintf("The AUC for the AllVariableModel is %.2f%%, and the AUC for the topThreeModel is %.2f%%", allVariableModelAUC*100, topThreeModelAUC*100))
+print(sprintf("The AUC for the allVariableModel is %.2f%%", allVariableModelAUC*100))
+print(sprintf("The AUC for the topThreeModel is %.2f%%", topThreeModelAUC*100))
 
 # Check the allVariableModel for overfitting
 allVariableModelPerformanceTest <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
 plotROCCurves(allVariableModelPerformance, allVariableModelPerformanceTest, main = "All Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
 allVariableModelAUCTest <- getAUC(test_df$Churn, test_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
-print(sprintf("The AUC for the training dataset using the allVariableModel is %.2f%%, and the AUC for the test dataset is %.2f%%", allVariableModelAUC*100, allVariableModelAUCTest*100))
+print(sprintf("The AUC for the training dataset using the allVariableModel is %.2f%%", allVariableModelAUC*100))
+print(sprintf("The AUC for the test dataset using the allVariableModel is %.2f%%", allVariableModelAUCTest*100))
 
 # Check the topThreeModel for overfitting
 topThreeModelPerformanceTest <- getModelPerformance(topThreeLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
 plotROCCurves(topThreeModelPerformance, topThreeModelPerformanceTest, main = "Top Three Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
 topThreeModelAUCTest <- getAUC(test_df$Churn, test_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
-print(sprintf("The AUC for the training dataset using the topThreeModel is %.2f%%, and the AUC for the test dataset is %.2f%%", topThreeModelAUC*100, topThreeModelAUCTest*100))
+print(sprintf("The AUC for the training dataset using the topThreeModel is %.2f%%", topThreeModelAUC*100))
+print(sprintf("The AUC for the test dataset using the topThreeModel is %.2f%%", topThreeModelAUCTest*100))
 
-
-
-
-
-
-# TODO TIDY
-#pred.ff <- predict(allVariablesLogisticRegressionModel, train_df, type = "response")
-#contrasts(train_df$Churn)
-#new_df <- createPrediction_df(allVariablesLogisticRegressionModel, train_df, oneClass = "Yes", zeroClass = "No")
-#head(new_df)
-#confusionMatrix(new_df$classification, train_df$Churn)
-
-
+# Create confusion matricies to compare predicitons
+print("All Variable Model Confusion Matrix")
+createConfusionMatrix(allVariablesLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No")
+print("Top Three Variable Confusion Matrix")
+print(createConfusionMatrix(topThreeLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No"))
 ```
 
 
