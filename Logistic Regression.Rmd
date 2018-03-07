@@ -25,6 +25,9 @@ dataScienceReport = T
 knitr::opts_chunk$set(echo = dataScienceReport, tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
+# Introduction
+In this report we will develop a logistic regression model that will build upon our decision tree from our previous report. Once created, the model will allow us to predict whether customers outside of our dataset will Churn and with what liklihood. 
+
 ```{r Functions Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Functions
     This section will hold all of the functions that will be used throughout this markdown.")
@@ -56,7 +59,7 @@ createLogisticRegressionModel <- function(formula, family=binomial, dataset){
 # Create a prediction dataframe
 createPrediction_df <- function(model, dataset, predictionType = "response", oneClass, zeroClass){
   # Run the prediction
-  prediction<- predict(model, dataset, type = predictionType)
+  prediction<- suppressWarnings(predict(model, dataset, type = predictionType))
   # Convert to a dataframe
   prediction_df <- data.frame(prediction)
   # Rename the column to reference easier
@@ -100,7 +103,7 @@ getAUC <- function(outcomeColumn, dataset, model, oneClass, zeroClass){
   return(auc)
 }
 
-# Create a confusion matrix
+# Create a confusion matrix. Returns a confusion matrix
 createConfusionMatrix <- function(model, dataset, outcomeColumn, oneClass, zeroClass){
   suppressMessages(library(caret))
   prediction_df <- createPrediction_df(model, dataset, oneClass = oneClass, zeroClass = zeroClass)
@@ -108,6 +111,44 @@ createConfusionMatrix <- function(model, dataset, outcomeColumn, oneClass, zeroC
   
   return(userConfusionMatrix)
 }
+
+# Create a new customer for predicition. Returns a dataframe
+createCustomer <- function(originalDataset, gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity,
+                           OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MontlyCharges,
+                           TotalCharges, Churn){
+  # Create a copy of the original dataset and keep one row that will be overridden with the new data.
+  newCustomer <- customerDataset[1,]
+  
+  newCustomer$gender <- gender
+  newCustomer$SeniorCitizen <- SeniorCitizen
+  newCustomer$Partner<- Partner
+  newCustomer$Dependents <- Dependents
+  newCustomer$tenure <- tenure
+  newCustomer$PhoneService <- PhoneService
+  newCustomer$MultipleLines <- MultipleLines
+  newCustomer$InternetService <- InternetService
+  newCustomer$OnlineSecurity <- OnlineSecurity
+  newCustomer$OnlineBackup <- OnlineBackup
+  newCustomer$DeviceProtection <- DeviceProtection
+  newCustomer$TechSupport <- TechSupport
+  newCustomer$StreamingTV <- StreamingTV
+  newCustomer$StreamingMovies <- StreamingMovies
+  newCustomer$Contract <- Contract
+  newCustomer$PaperlessBilling <- PaperlessBilling
+  newCustomer$PaymentMethod <- PaymentMethod
+  newCustomer$MonthlyCharges <- MontlyCharges
+  newCustomer$TotalCharges <- TotalCharges
+  newCustomer$Churn <- Churn
+  
+  # Convert fields that are factors
+  newCustomer <- setRowAsFactor(newCustomer, c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService",
+                                                     "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup",
+                                                     "DeviceProtection","TechSupport", "StreamingTV", "StreamingMovies",
+                                                     "Contract", "PaperlessBilling", "PaymentMethod", "Churn"
+                                                     ))
+  
+  return(newCustomer)
+                           }
 ```
 
 
@@ -115,7 +156,7 @@ createConfusionMatrix <- function(model, dataset, outcomeColumn, oneClass, zeroC
 cat("#Data
 In this section we will load in our data and do some basic data exploration.")
 ```
-```{r Load Data Code}
+```{r Load Data Code, include=dataScienceReport}
 suppressMessages(library(RMySQL))
 
 USER <- 'root'
@@ -138,7 +179,7 @@ customerDataset <- setRowAsFactor(customerDataset, c("gender", "SeniorCitizen", 
                                                      ))
 
 # Drop the columns that will not be needed
-customerDataset = customerDataset[, -which(names(customerDataset) %in% c("customerID"))]
+customerDataset <- customerDataset[, -which(names(customerDataset) %in% c("customerID"))]
 
 ```
 
@@ -148,7 +189,7 @@ cat("##Split Data
 We will now split our data into test and training sets. The purpose of this is to create a sample of data that the model has never seen before in order to gauge its accuracy. 
 The training set will consist of 80% of the data while the remaining 20% will constitute the test set.")
 ```
-```{r Split Code}
+```{r Split Code, include=dataScienceReport}
 suppressMessages(library(caTools))
 
 # Set the seed to reproducability
@@ -189,7 +230,8 @@ plot(decisionTreeModel, main = "Decision Tree Model", type = "extended", newpage
 ```
 \elandscape
 ```{r Decision Tree Discussion, results='asis', echo=F, include=dataScienceReport}
-cat("From looking at the decision tree it is clear that the top three variables are Contract, InternetService, and Tenure. Below those three levels, other variables
+cat("###Decision Tree Results
+From looking at the decision tree it is clear that the top three variables are Contract, InternetService, and Tenure. Below those three levels, other variables
     such as StreamingTV, and TechSupport become relevant. To develop the best performing model with this dataset we will create a regression using only those three
     top level variables, and then a second using all variables. The results from each model will then be compared before the best model is presented to management.")
 ```
@@ -212,12 +254,10 @@ allVariablesLogisticRegressionModel <- createLogisticRegressionModel(formula = C
 # Print a summary of the regression
 print("Model Summary")
 summary(allVariablesLogisticRegressionModel)
-# Convert Betas into odds ratio
-print("Odds Ratios")
-exp(coef(allVariablesLogisticRegressionModel))
 ```
 ```{r All Variable Logistic Regression Discussion, results='asis', echo=F, include=dataScienceReport}
-cat("From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. TotalCharges is also statistically different from zero however since the decision tree deemed that it had no
+cat("###All Variables Logistic Regression Results
+From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. TotalCharges is also statistically different from zero however since the decision tree deemed that it had no
     predictive information we will not be including it in our model building")
 ```
 
@@ -232,15 +272,12 @@ topThreeLogisticRegressionModel <- createLogisticRegressionModel(formula = Churn
 # Print a summary of the regression
 print("Model Summary")
 summary(topThreeLogisticRegressionModel)
-# Convert Betas into odds ratio
-print("Odds Ratios")
-exp(coef(topThreeLogisticRegressionModel))
 ```
 
 
 ```{r Model Comparison Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Model Comparison
-Now that we have create all three models we will test their accuracy against the training dataset and also the test dataset. One of the easiest ways to see which model
+Now that we have created our two models we will test their accuracy against the training dataset and also the test dataset. One of the easiest ways to see which model
 is more accurate is to use an ROC curve and measure the area under each curve, the larger the area under the curve the more accurate the model is. We will first test
 each model using the training dataset before testing each one individually with the test dataset to gauge how robust they are. Once we have established whether the models
 are robust we will create a pair of confusion matricies using the test dataset to see which model had the highest percentage of churns predicted correctly. ")
@@ -253,39 +290,88 @@ suppressMessages(library(ROCR))
 allVariableModelPerformance <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = train_df, outcomeColumn = train_df$Churn)
 topThreeModelPerformance <- getModelPerformance(topThreeLogisticRegressionModel, dataset = train_df, outcomeColumn = train_df$Churn)
 
-# Plot the ROC curves
-plotROCCurves(allVariableModelPerformance, topThreeModelPerformance, main = "ROC Curves Comparison", model1Name = "AllVariableModel", model2Name = "TopThreeModel")
-
 # Get the AUC
 allVariableModelAUC <- getAUC(train_df$Churn, train_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
 topThreeModelAUC <- getAUC(train_df$Churn, train_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
-# Print the AUC
-print(sprintf("The AUC for the allVariableModel is %.2f%%", allVariableModelAUC*100))
-print(sprintf("The AUC for the topThreeModel is %.2f%%", topThreeModelAUC*100))
+
+# Plot the ROC curves
+plotROCCurves(allVariableModelPerformance, topThreeModelPerformance, main = "ROC Curves Comparison", 
+              model1Name = sprintf("All Variable Model. AUC %.2f%%", allVariableModelAUC*100), 
+              model2Name = sprintf("Top Three Model. AUC %.2f%%", topThreeModelAUC*100))
 
 # Check the allVariableModel for overfitting
 allVariableModelPerformanceTest <- getModelPerformance(allVariablesLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
-plotROCCurves(allVariableModelPerformance, allVariableModelPerformanceTest, main = "All Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
 allVariableModelAUCTest <- getAUC(test_df$Churn, test_df, allVariablesLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
-print(sprintf("The AUC for the training dataset using the allVariableModel is %.2f%%", allVariableModelAUC*100))
-print(sprintf("The AUC for the test dataset using the allVariableModel is %.2f%%", allVariableModelAUCTest*100))
+plotROCCurves(allVariableModelPerformance, allVariableModelPerformanceTest, main = "All Variable Robustness", 
+              model1Name = sprintf("Training Dataset. AUC %.2f%%", allVariableModelAUC*100), 
+              model2Name = sprintf("Test Dataset. AUC %.2f%%", allVariableModelAUCTest*100))
 
 # Check the topThreeModel for overfitting
 topThreeModelPerformanceTest <- getModelPerformance(topThreeLogisticRegressionModel, dataset = test_df, outcomeColumn = test_df$Churn)
-plotROCCurves(topThreeModelPerformance, topThreeModelPerformanceTest, main = "Top Three Variable Robustness", model1Name = "Training Dataset", model2Name = "Test Dataset")
 topThreeModelAUCTest <- getAUC(test_df$Churn, test_df, topThreeLogisticRegressionModel, oneClass = "Yes", zeroClass = "No")
-print(sprintf("The AUC for the training dataset using the topThreeModel is %.2f%%", topThreeModelAUC*100))
-print(sprintf("The AUC for the test dataset using the topThreeModel is %.2f%%", topThreeModelAUCTest*100))
+plotROCCurves(topThreeModelPerformance, topThreeModelPerformanceTest, main = "Top Three Variable Robustness", 
+              model1Name = sprintf("Training Dataset. AUC %.2f%%", topThreeModelAUC*100), 
+              model2Name = sprintf("Test Dataset. AUC %.2f%%", topThreeModelAUCTest*100))
+
 
 # Create confusion matricies to compare predicitons
 print("All Variable Model Confusion Matrix")
-createConfusionMatrix(allVariablesLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No")
+allVariableConfusionMatrix <- createConfusionMatrix(allVariablesLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No")
+allVariableConfusionMatrix
+allVariableYesCorrectPercentage <- allVariableConfusionMatrix[2,2]/sum(allVariableConfusionMatrix)
+sprintf("The All Variable Model predicted yes correctly %.2f%% of the time", allVariableYesCorrectPercentage*100)
 print("Top Three Variable Confusion Matrix")
-print(createConfusionMatrix(topThreeLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No"))
+topThreeConfusionMatrix <- createConfusionMatrix(topThreeLogisticRegressionModel, test_df, test_df$Churn, oneClass = "Yes", zeroClass = "No")
+topThreeConfusionMatrix
+topThreeYesCorrectPercentage <- topThreeConfusionMatrix[2,2]/sum(topThreeConfusionMatrix)
+sprintf("The Top Three Model predicted yes correctly %.2f%% of the time", topThreeYesCorrectPercentage*100)
+
+```
+```{r Model Comparison Discussion, results='asis', echo=F, include=dataScienceReport}
+cat("###Model Comparison Discussion
+Looking at the ROC Curves Comparison graph we can see that the two models have a similar AUC with the All Variable Model only slightly outperforming the Top Three Model.
+The following two ROC curves show us that both models are robust and have not been overfit since they are approximately as accurate of the test dataset as they are on
+the training dataset.
+In line with the results from the ROC curve, the All Variable model also out performs the topThreeModel in terms of the highest percentage of Churns predicited correctly.
+For these reasons we will be presenting the All Variable Model to management.")
 ```
 
 
-
+#Model
+After testing different combinations of predictive factors we were able to produce this model which accurately predicts the whether a customer will churn 14.32% of the time. For example, if we take a customer who is on a month-to-month plan, has fiber optic internet, and has been with the company for one year, we can feed that information into the model a predict how likely they are to Churn.
+```{r New Customer, echo=dataScienceReport}
+# Create a new customer
+newCustomer <- createCustomer(customerDataset, 
+                              gender = "Female", 
+                              SeniorCitizen = 0, 
+                              Partner = "Yes", 
+                              Dependents = "No", 
+                              tenure = 1, 
+                              PhoneService = "Yes",
+                              MultipleLines = "No", 
+                              InternetService = "Fiber optic",
+                              OnlineSecurity = "No",
+                              OnlineBackup = "No",
+                              DeviceProtection = "No",
+                              TechSupport = "No",
+                              StreamingTV = "Yes",
+                              StreamingMovies = "Yes",
+                              Contract = "Month-to-month",
+                              PaperlessBilling = "Yes",
+                              PaymentMethod = "Bank transfer (automatic)",
+                              MontlyCharges = 34.5,
+                              TotalCharges = 49,
+                              Churn = "Yes"
+                              )
+newCustomerPrediciton <- createPrediction_df(allVariablesLogisticRegressionModel, dataset = newCustomer, oneClass = "Yes", zeroClass = "No")
+newCustomerPrediciton
+```
+The model has predicited that a customer with these parameters has a 96.17% liklihood of churning. To understand this result a better we should turn our attention to the odds ratios produced by the model.
+```{r Odds Ratio, echo=dataScienceReport}
+print("Odds Ratios")
+exp(coef(allVariablesLogisticRegressionModel))
+```
+We can see from these statistics that being on the Fiber optic network makes a customer 5.844 times more likely to churn as opposed to not being on it. A main driver behind this statistic could be sub-optimal network speeds. The type of customer who uses a fiber optic network is someone who needs the fastest possible internet speeds, whether it be for business or personal use. It could be worth the company's time and resources to further invest into this network to reduce the liklihood of a customer churning. Not offering the network is illadvised since customers will opt for other providers who do offer the network, even if its speeds are also below expectations.
 
 
 
