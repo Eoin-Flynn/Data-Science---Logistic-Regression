@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = dataScienceReport, tidy.opts=list(width.cutoff=60),
 ```
 
 # Introduction
-In this report we will develop a logistic regression model that will build upon our decision tree from our previous report. Once created, the model will allow us to predict whether customers outside of our dataset will Churn and with what liklihood. 
+In this report we will develop a logistic regression model that will build upon our decision tree from our previous report. Once created, the model will allow us to predict whether customers outside of our dataset will Churn and with what likelihood. 
 
 ```{r Functions Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Functions
@@ -78,7 +78,7 @@ createPrediction_df <- function(model, dataset, predictionType = "response", one
 getModelPerformance <- function(model, dataset, outcomeColumn, type="response", xAxis = "tpr", yAxis = "fpr"){
   suppressMessages(library(ROCR))
   # Create a predict variable
-  predict <- predict(model, dataset, type = type)
+  predict <- suppressWarnings(predict(model, dataset, type = type))
   # Create a predicition variable
   predicition <- prediction(predict, outcomeColumn)
   # Create the performance variable
@@ -217,8 +217,8 @@ print(sprintf("%.2f%% of the testing set churned", ((NROW(subset(test_df, Churn=
 
 ```{r Decision Tree Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Decision Tree
-We want to first make a decision tree to determine which variables are best able to predict whether a customer will churn. We already know from our previous report
-that the optimal model is however this time the tree will only be run on the training dataset.")
+We want to first revisit the decision tree from our previous report. We already know from our previous report what the optimal model is, 
+however this time the tree will only be run on the training dataset.")
 ```
 ```{r Decision Tree Code, include=dataScienceReport}
 # Create and plot the decision tree
@@ -231,21 +231,19 @@ plot(decisionTreeModel, main = "Decision Tree Model", type = "extended", newpage
 \elandscape
 ```{r Decision Tree Discussion, results='asis', echo=F, include=dataScienceReport}
 cat("###Decision Tree Results
-From looking at the decision tree it is clear that the top three variables are Contract, InternetService, and Tenure. Below those three levels, other variables
-    such as StreamingTV, and TechSupport become relevant. To develop the best performing model with this dataset we will create a regression using only those three
-    top level variables, and then a second using all variables. The results from each model will then be compared before the best model is presented to management.")
+From looking at the decision tree it is clear that the top three variables are Contract, InternetService, and Tenure. Other variables such as StreamingTV, and TechSupport are also highly ranked but their predictive qualilites are not as strong. To develop the best performing model with this dataset we will create a regression model using only those three top level variables, and then a second using all variables. The results from each model will then be compared before the best model is presented to management.")
 ```
 
 
 ```{r Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
 cat("#Logistic Regression
-We will now create multiple logistic regressions using GLM package. We will compare and then optimize before providing a final model to management for business use.")
+We will now create our logistic regressions models. We will compare and then optimize before providing a final model to management for business use.")
 ```
 
 ```{r All Variable Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
 cat("##All Variables Logistic Regression
 In this section we will create a logistic regression using all variables in the training dataset and look at statistical significance of each. Later in the report we will
-assess the accuracy of this model against others.")
+assess the accuracy of this model against our model using only the top three variables.")
 ```
 ```{r All Variable Logistic Regression, include=dataScienceReport}
 # We will start by first making a regression using all variables
@@ -257,8 +255,7 @@ summary(allVariablesLogisticRegressionModel)
 ```
 ```{r All Variable Logistic Regression Discussion, results='asis', echo=F, include=dataScienceReport}
 cat("###All Variables Logistic Regression Results
-From the model's summary we can see that our top three variables identified earlier are all have a high statistical significance. TotalCharges is also statistically different from zero however since the decision tree deemed that it had no
-    predictive information we will not be including it in our model building")
+From the model's summary we can see that the top three variables identified earlier all have a high statistical significance. TotalCharges is also statistically different from zero however since the decision tree deemed that it had no predictive information we will not be including it in our top thre model.")
 ```
 
 ```{r Top Three Logistic Regression Text, results='asis', echo=F, include=dataScienceReport}
@@ -330,9 +327,9 @@ sprintf("The Top Three Model predicted yes correctly %.2f%% of the time", topThr
 ```{r Model Comparison Discussion, results='asis', echo=F, include=dataScienceReport}
 cat("###Model Comparison Discussion
 Looking at the ROC Curves Comparison graph we can see that the two models have a similar AUC with the All Variable Model only slightly outperforming the Top Three Model.
-The following two ROC curves show us that both models are robust and have not been overfit since they are approximately as accurate of the test dataset as they are on
+The following two ROC curves show us that both models are robust and have not been overfit since they are approximately as accurate on the test dataset as they are on
 the training dataset.
-In line with the results from the ROC curve, the All Variable model also out performs the topThreeModel in terms of the highest percentage of Churns predicited correctly.
+In line with the results from the ROC curve, the All Variable model also outperforms the topThreeModel in terms of the highest percentage of Churns predicited correctly.
 For these reasons we will be presenting the All Variable Model to management.")
 ```
 
@@ -366,12 +363,12 @@ newCustomer <- createCustomer(customerDataset,
 newCustomerPrediciton <- createPrediction_df(allVariablesLogisticRegressionModel, dataset = newCustomer, oneClass = "Yes", zeroClass = "No")
 newCustomerPrediciton
 ```
-The model has predicited that a customer with these parameters has a 96.17% liklihood of churning. To understand this result a better we should turn our attention to the odds ratios produced by the model.
+The model has predicted that a customer with these parameters will almost certainly churn. To understand this result better we should turn our attention to the odds ratios produced by the model.
 ```{r Odds Ratio, echo=dataScienceReport}
 print("Odds Ratios")
 exp(coef(allVariablesLogisticRegressionModel))
 ```
-We can see from these statistics that being on the Fiber optic network makes a customer 5.844 times more likely to churn as opposed to not being on it. A main driver behind this statistic could be sub-optimal network speeds. The type of customer who uses a fiber optic network is someone who needs the fastest possible internet speeds, whether it be for business or personal use. It could be worth the company's time and resources to further invest into this network to reduce the liklihood of a customer churning. Not offering the network is illadvised since customers will opt for other providers who do offer the network, even if its speeds are also below expectations.
+We can see from these statistics that being on the Fiber optic network makes a customer 5.844 times more likely to churn as opposed to not being on it. A main driver behind this statistic could be sub-optimal network speeds. The type of customer who uses a fiber optic network is someone who needs the fastest possible internet speeds, whether it be for business or personal use. It could be worth the company's time and resources to further invest into this network to reduce the likelihood of a customer churning. Not offering the network is ill-advised since customers will opt for other providers who do offer the network, even if its speeds are also below expectations.
 
 
 
